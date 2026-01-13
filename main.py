@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import requests
 import os
 import time
+import wikipedia
 
 # Dictionary of websites
 Site: Dict[str, str] = {
@@ -19,6 +20,39 @@ Site: Dict[str, str] = {
     "wikipedia": 'https://www.wikipedia.org/'
 }
 
+def open_installed_app(app_name: str) -> None:
+    """Open an installed application based on the provided app name."""
+    INSTALL_APPS = {
+        "calculator": "C:\\Windows\\System32\\calc.exe",
+        "notepad": "C:\\Windows\\System32\\notepad.exe",
+        "paint": "C:\\Windows\\System32\\mspaint.exe",
+        "wordpad": "C:\\Program Files\\Windows NT\\Accessories\\wordpad.exe",
+        "cmd": "C:\\Windows\\System32\\cmd.exe",
+        "explorer": "C:\\Windows\\explorer.exe"   
+    }
+    
+    try:
+        app_path: str = INSTALL_APPS[app_name]
+        os.startfile(app_path)
+        say_text(f"Opening {app_name}")
+    except KeyError:
+        say_text(f"Application {app_name} not found in the list.")
+    except Exception as e:
+        say_text(f"Unable to open {app_name}. Error: {str(e)}")
+
+
+def get_wiki_summary(query: str) -> str:
+    """Fetch a summary from Wikipedia for the given query."""
+    try:
+        summary: str = wikipedia.summary(query, sentences=2)
+        return summary
+    except wikipedia.DisambiguationError as e:
+        return f"Your query may refer to multiple topics: {e.options}"
+    except wikipedia.PageError:
+        return "No page found for your query."
+    except Exception as e:
+        return f"An error occurred while fetching data from Wikipedia: {str(e)}"
+    
 def get_weather(city_name: str) -> str:
     """Fetch weather information for a city using OpenWeather API."""
     try:
@@ -154,11 +188,33 @@ def process_command(command: str) -> bool:
         say_text("Stopping Jarvis. Goodbye!")
         return False
     
-    elif "open" in command:
-        site_name: str = command.replace("open", "").strip()
+    elif "open website" in command:
+        # which website to open
+        site_name: str = command.replace("open website", "").strip()
         site_name = site_name.split()[0] if site_name else ""
+        
+        if not site_name:
+            say_text("Which website would you like to open? Available: youtube, google, github, stackoverflow, gmail, wikipedia")
+            site_name = take_command().strip()
+            if not site_name:
+                say_text("I didn't catch the website name. Please try again.")
+                return True
+        
         open_website(site_name)
     
+    elif "open app" in command:
+        app_name: str = command.replace("open app", "").strip()
+        app_name = app_name.split()[0] if app_name else ""
+        
+        if not app_name:
+            say_text("Which application would you like to open? Available: calculator, notepad, paint, wordpad, cmd, explorer")
+            app_name = take_command().strip()
+            if not app_name:
+                say_text("I didn't catch the app name. Please try again.")
+                return True
+        
+        open_installed_app(app_name)
+
     elif "date" in command:
         date_str: str = datetime.now().strftime("%d-%m-%Y")
         say_text(f"Today's date is {date_str}")
@@ -167,6 +223,17 @@ def process_command(command: str) -> bool:
         time_str: str = datetime.now().strftime("%H:%M:%S")
         say_text(f"The time is {time_str}")
     
+    elif "wikipedia" in command:
+        query: str = command.replace("wikipedia", "").strip()
+        if not query:
+            say_text("What do you want to search on Wikipedia?")
+            query = take_command().strip()
+            if not query:
+                say_text("I didn't catch that. Please try again.")
+                return True
+        summary: str = get_wiki_summary(query)
+        say_text(summary)
+
     elif "weather" in command:
         if "weather in" in command:
             city_name: str = command.replace("weather in", "").strip()
@@ -180,6 +247,7 @@ def process_command(command: str) -> bool:
                 say_text("I didn't catch the city name. Please try again.")
                 return True
         
+        say_text("Fetching weather information. Please wait...")
         weather_info: str = get_weather(city_name)
         say_text(weather_info)
     
